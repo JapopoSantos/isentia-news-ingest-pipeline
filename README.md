@@ -116,7 +116,7 @@ docker build -t news-ingest-pipeline .
 
 Run container:
 Manual Environment Variables
-docker run --rm -e NEWSAPI_KEY=2273cc86776541f39be4afe986816fb8 -e NEWSAPI_QUERY=bitcoin -e AWS_REGION=ap-southeast-1 -e KINESIS_STREAM_NAME=your_stream_name news-ingest-pipeline
+docker run --rm -e NEWSAPI_KEY= -e NEWSAPI_QUERY=bitcoin -e AWS_REGION=ap-southeast-1 -e KINESIS_STREAM_NAME=your_stream_name news-ingest-pipeline
 
 Run Container Using .env File
 docker run --rm --env-file .env news-ingest-pipeline
