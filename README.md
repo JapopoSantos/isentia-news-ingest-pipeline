@@ -1,53 +1,58 @@
 News Ingest Pipeline
 
 Overview
-This project implements a simple news ingestion pipeline.
+This project implements a news ingestion pipeline.
 
-It pulls articles from the NewsAPI Everything endpoint on a fixed interval.
+It pulls articles from the NewsAPI Everything endpoint.
 It transforms and validates each article.
 It sends each article as a JSON record to an AWS Kinesis Data Stream.
 
-The goal is to produce a working, minimal, production-style pipeline that demonstrates API integration, data transformation, and Kinesis streaming.
+The goal is to produce a working, minimal pipeline that demonstrates API integration, data transformation, and Kinesis streaming.
 
 Architecture
 	1.	NewsAPI Everything endpoint
 	2.	Python ingestion service
 	3.	AWS Kinesis Data Stream
 
-Flow:
+Flow
+Poll NewsAPI -> Normalize article -> Generate article_id -> Send to Kinesis
 
-Poll NewsAPI → Normalize article → Generate article_id → Send to Kinesis → Repeat
+Normalization and Cleaning Applied
+- Converts null or missing fields to empty strings.
+- Trims leading and trailing whitespace from all text fields.
+- Ensures published_at always has a valid ISO 8601 UTC timestamp.
+- Truncates content to a maximum configured length to prevent oversized records.
+- Generates a unique article_id using uuid4().
 
 Output Schema
-
 Each article sent to Kinesis has the following structure:
 
 {
-“article_id”: “sha256(url + published_at)”,
-“source_name”: “Reuters”,
-“title”: “Example headline”,
-“content”: “Cleaned article content”,
-“url”: “https://example.com/news/article”,
-“author”: “John Doe”,
-“published_at”: “2026-02-22T01:23:45Z”,
-“ingested_at”: “2026-02-22T09:15:10Z”
+“article_id”: “3f8e5c2a-7b91-4d8a-a2f3-5c0b7e6f9d12”,
+“source_name”: “Gizmodo.com”,
+“title”: “Major Bitcoin Miner Sells $305 Million Worth of Crypto to Fund Pivot to AI”,
+“content”: “Over the weekend, bitcoin miner Cango sold 4,451 bitcoin for around $305 million…”,
+“url”: “https://gizmodo.com/major-bitcoin-miner-sells-305-million-worth-of-crypto-to-fund-pivot-to-ai-2000720078”,
+“author”: “Kyle Torpey”,
+“published_at”: “2026-02-10T16:10:27Z”,
+“ingested_at”: “2026-02-22T22:15:10Z”
 }
 
-article_id is generated deterministically using SHA-256 on url + published_at to avoid duplicates.
+article_id is generated using uuid4().
+It is a random 128-bit UUID displayed as 36 characters including hyphens.
 
 Requirements
-	•	Python 3.11 or higher
+	•	Python 3.9 or higher
 	•	AWS account
 	•	AWS Kinesis Data Stream created
 	•	NewsAPI API key
 
 Project Structure
-
-ISENTIA - NEWS INGEST PIPELINE/
+isentia-news-ingest-pipeline/
 README.md
 requirements.txt
 Dockerfile
-.env.example
+.env
 src/
 news_ingest_pipeline/
 init.py
@@ -56,73 +61,56 @@ config.py
 newsapi_client.py
 models.py
 kinesis_writer.py
-utils.py
 
 Environment Variables
-
 Required:
-
 NEWSAPI_KEY=your_newsapi_key
 NEWSAPI_QUERY=bitcoin
 AWS_REGION=ap-southeast-1
 KINESIS_STREAM_NAME=your_stream_name
 
-Optional:
-
-POLL_INTERVAL_SECONDS=60
-NEWSAPI_PAGE_SIZE=50
-NEWSAPI_LANGUAGE=en
-NEWSAPI_SORT_BY=publishedAt
-LOG_LEVEL=INFO
-
 Setup Instructions
-	1.	Clone repository
+1.	Clone repository
+git clone <repo_url>
+cd isentia-news-ingest-pipeline
 
-git clone 
-cd news-ingest-pipeline
-	2.	Create virtual environment
-
+2.	Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
-	3.	Install dependencies
 
+3.	Install dependencies
 pip install -r requirements.txt
-	4.	Configure environment
 
+4.	Configure environment
 Create a .env file in the root directory and add required variables.
-	5.	Configure AWS credentials
+	
+5.	Configure AWS credentials
 
 Option 1
 aws configure
 
 Option 2
-Export environment variables:
-
 export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret
 
 Running the Application
+Because the project uses the src layout, set PYTHONPATH before running:
 
-Run locally:
-
-python -m news_ingest_pipeline.main
+export PYTHONPATH=src
+python3 -m news_ingest_pipeline.main
 
 The application will:
-	•	Poll NewsAPI
-	•	Transform articles
+	•	Fetch articles from NewsAPI
+	•	Transform and normalize fields
+	•	Generate a UUID article_id
 	•	Send records to Kinesis
 	•	Log results
-	•	Sleep for POLL_INTERVAL_SECONDS
-	•	Repeat
 
 Docker Usage
-
 Build image:
-
 docker build -t news-ingest-pipeline .
 
 Run container:
-
 docker run –rm 
 -e NEWSAPI_KEY=your_key 
 -e NEWSAPI_QUERY=bitcoin 
@@ -133,38 +121,30 @@ docker run –rm
 news-ingest-pipeline
 
 Kinesis Integration
-
 The application uses boto3 to send records to AWS Kinesis.
 
-Each article is sent as one JSON record using PutRecords or PutRecord.
-
-PartitionKey uses article_id to ensure stable shard distribution.
+Each article is sent as one JSON record using PutRecord or PutRecords.
+PartitionKey uses article_id.
 
 Kinesis limits:
 	•	Max record size: 1 MB
 	•	Max 500 records per PutRecords call
 
 Implementation Notes
-	•	Deterministic article_id prevents duplicates.
-	•	Content may be truncated to avoid size issues.
-	•	Null fields are normalized.
-	•	Errors from AWS are retried.
-	•	Logging captures success and failure counts.
+	•	article_id is randomly generated using uuid4().
+	•	Content is truncated if it exceeds the configured maximum length.
+	•	Null fields are normalized to safe defaults.
+	•	Pydantic validates the article schema.
 
 Testing Strategy
-
 Basic validation:
 	•	Confirm API fetch works.
-	•	Confirm JSON transformation matches schema.
+	•	Confirm JSON transformation matches required schema.
 	•	Confirm records appear in Kinesis Data Viewer.
 
-Optional unit tests can validate:
-	•	article_id generation
-	•	Data transformation logic
-
 Production Considerations
-	•	Add persistent checkpointing to avoid reprocessing.
+	•	Add checkpointing to avoid reprocessing.
 	•	Add structured logging.
-	•	Add metrics.
-	•	Add dead-letter handling for failed records.
+	•	Add retry logic with backoff.
+	•	Add metrics and monitoring.
 	•	Add CI pipeline.
