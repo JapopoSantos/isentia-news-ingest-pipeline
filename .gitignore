@@ -3,7 +3,9 @@ test - g/
 *.docx
 *.ipynb
 *.pyc
+pycache/
 venv/
+.DS_Store
 
 #git rm –cached .env
 #git rm -r –cached “test - g”
