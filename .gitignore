@@ -1,0 +1,6 @@
+.env
+test-g/
+*.docx
+*.ipynb
+*.pyc
+venv/
