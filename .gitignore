@@ -1,6 +1,12 @@
 .env
-test-g/
+test - g/
 *.docx
 *.ipynb
 *.pyc
 venv/
+
+#git rm –cached .env
+#git rm -r –cached “test - g”
+#git rm –cached *.ipynb
+#git rm –cached *.docx
+#git rm –cached .DS_Store
