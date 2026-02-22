@@ -29,15 +29,15 @@ def main() -> None:
         for article in articles:
            print(article.model_dump())
 
-    writer = KinesisWriter(config)
+    # writer = KinesisWriter(config)
 
-    sent = 0
-    for article in articles:
-        record = article.model_dump()
-        writer.send_one(record, partition_key=article.article_id)
-        sent += 1
+    # sent = 0
+    # for article in articles:
+    #     record = article.model_dump()
+    #     writer.send_one(record, partition_key=article.article_id)
+    #     sent += 1
 
-    print(f"Sent to Kinesis: {sent}")
+    # print(f"Sent to Kinesis: {sent}")
 
 if __name__ == "__main__":
     main()
